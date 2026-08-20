@@ -1,0 +1,34 @@
+{
+  "name": "ts-symbol-enum",
+  "version": "1.0.0",
+  "description": "TypeScript Symbol Enum",
+  "author": "Somnium7",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Somnium7/ts-symbol-enum.git"
+  },
+  "license": "MIT",
+  "private": false,
+  "type": "module",
+  "scripts": {
+    "build": "npx tsc",
+    "test": "node --test --experimental-test-coverage --enable-source-maps \"./build/**/*.test.mjs\"",
+    "prepack": "npm run build && npm test"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "typescript": "^7.0.2"
+  },
+  "files": [
+    "/build",
+    "!**/*.test.*"
+  ],
+  "exports": {
+    ".": {
+      "import": {
+        "default": "./build/index.mjs",
+        "types": "./build/index.d.mts"
+      }
+    }
+  }
+}
