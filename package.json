@@ -1,12 +1,23 @@
 {
   "name": "ts-symbol-enum",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "TypeScript Symbol Enum",
   "author": "Somnium7",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Somnium7/ts-symbol-enum.git"
   },
+  "keywords": [
+    "typescript",
+    "enum",
+    "symbol",
+    "type-safe",
+    "erasableSyntaxOnly"
+  ],
+  "bugs": {
+    "url": "https://github.com/Somnium7/ts-symbol-enum/issues"
+  },
+  "homepage": "https://github.com/Somnium7/ts-symbol-enum",
   "license": "MIT",
   "private": false,
   "type": "module",
@@ -23,6 +34,9 @@
     "/build",
     "!**/*.test.*"
   ],
+  "engines": {
+    "node": ">=24"
+  },
   "exports": {
     ".": {
       "import": {

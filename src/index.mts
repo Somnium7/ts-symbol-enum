@@ -67,12 +67,13 @@ type EnumObjectType<N extends string, E extends ClassAndValuePairs> =
     readonly name: N;
     readonly keys: KeyTuple;
     readonly values: SymbolValuesTuple;
-    readonly originalValues: ValueTuple;
+    readonly rawValues: ValueTuple;
     readonly entries: SymbolEntriesTuple;
     parse(value: unknown): SymbolValuesTuple[number];
     isValidValue(value: unknown): value is ValueTuple[number];
     unparse(symbolValue: SymbolValuesTuple[number]): ValueTuple[number];
-    getKeyName(symbolValue: SymbolValuesTuple[number]): KeyTuple[number];
+    keyOf(symbolValue: SymbolValuesTuple[number]): KeyTuple[number];
+    has(keyName: unknown): keyName is KeyTuple[number];
   } & {
     readonly [P in SymbolEntriesTuple[number] as P[0]]: P[1];
   } & TupleToObject<SymbolValuesTuple>>
@@ -85,32 +86,43 @@ type EnumObjectType<N extends string, E extends ClassAndValuePairs> =
 export function SymbolEnum<
   const N extends string,
   const E extends ClassAndValuePairs,
->(name: N, ...classAndOriginalValuePairs: E): EnumObjectType<N, E> {
+>(name: N, ...classAndRawValuePairs: E): EnumObjectType<N, E> {
 
-  const length: E['length'] = classAndOriginalValuePairs.length;
+  const length: E['length'] = classAndRawValuePairs.length;
 
   const keys: string[] = [];
   const values: symbol[] = [];
-  const originalValues: unknown[] = [];
-  const entries: [string, symbol][] = [];
+  const rawValues: unknown[] = [];
+  const entries: (readonly [string, symbol])[] = [];
   const parseMap = new Map<unknown, symbol>();
   const unparseMap = new Map<symbol, unknown>();
-  const keyMap = new Map<symbol, string>();
+  const keyOfMap = new Map<symbol, string>();
+  const keySymbolMap = new Map<string, symbol>();
   const record: Record<string, symbol> = {};
   let index = 0;
-  for (const [classDecl, originalValue] of classAndOriginalValuePairs) {
-    const key: string | undefined = Object.keys(classDecl)[0];
-    if (!key) {
-      throw new Error(`${name}: Class at index ${index} does not have a static symbol property.`);
+  for (const [classDecl, rawValue] of classAndRawValuePairs) {
+    const classDeclKeys: string[] = Object.keys(classDecl);
+    if (classDeclKeys.length > 1) { // TODO: enforce at compile time as well
+      throw new Error(`${name}: Class at index ${index} has multiple static symbol properties! It must have exactly one static symbol property.`);
+    }
+    const key: string | undefined = classDeclKeys[0];
+    if (!key) { // TODO: enforce at compile time as well
+      throw new Error(`${name}: Class at index ${index} does not have a static symbol property! It must have exactly one static symbol property.`);
+    }
+    if (/^-?\d+$/.test(key)) { // TODO: enforce at compile time as well
+      throw new Error(`${name}: Class at index ${index} has static symbol property with a numeric name!`);
     }
     const symbolValue: symbol = Symbol(`${name}.${key}`);
     keys.push(key);
     values.push(symbolValue);
-    originalValues.push(originalValue);
-    entries.push([key, symbolValue]);
-    parseMap.set(originalValue, symbolValue);
-    unparseMap.set(symbolValue, originalValue);
-    keyMap.set(symbolValue, key);
+    rawValues.push(rawValue);
+    entries.push(Object.freeze([key, symbolValue]));
+    if (!parseMap.has(rawValue)) {
+      parseMap.set(rawValue, symbolValue);
+    }
+    unparseMap.set(symbolValue, rawValue);
+    keyOfMap.set(symbolValue, key);
+    keySymbolMap.set(key, symbolValue);
     record[key] = symbolValue;
     record[index++] = symbolValue;
   }
@@ -122,12 +134,12 @@ export function SymbolEnum<
     name,
     keys: Object.freeze(keys),
     values: Object.freeze(values),
-    originalValues: Object.freeze(originalValues),
+    rawValues: Object.freeze(rawValues),
     entries: Object.freeze(entries),
     parse: (value: unknown): symbol => {
       const symbolValue: symbol | undefined = parseMap.get(value);
       if (symbolValue === undefined) {
-        throw new TypeError(`${name}.parse: Invalid value for enum ${name}: ${value}! Valid values are: ${originalValues.join(', ')}.`);
+        throw new TypeError(`${name}.parse: Invalid value for enum ${name}: ${value}! Valid values are: ${rawValues.join(', ')}.`);
       }
       return symbolValue;
     },
@@ -135,18 +147,20 @@ export function SymbolEnum<
       return parseMap.has(value);
     },
     unparse: (symbolValue: symbol): unknown => {
-      const originalValue: unknown = unparseMap.get(symbolValue);
-      if (originalValue === undefined) {
+      if (!unparseMap.has(symbolValue)) {
         throw new TypeError(`${name}.unparse: Invalid symbol for enum ${name}: ${symbolValue.toString()}!`);
       }
-      return originalValue;
+      return unparseMap.get(symbolValue);
     },
-    getKeyName: (symbolValue: symbol): string => {
-      const key: string | undefined = keyMap.get(symbolValue);
+    keyOf: (symbolValue: symbol): string => {
+      const key: string | undefined = keyOfMap.get(symbolValue);
       if (key === undefined) {
-        throw new TypeError(`${name}.getKeyName: Invalid symbol for enum ${name}: ${symbolValue.toString()}!`);
+        throw new TypeError(`${name}.keyOf: Invalid symbol for enum ${name}: ${symbolValue.toString()}!`);
       }
       return key;
+    },
+    has: (keyName: string): boolean => {
+      return keySymbolMap.has(keyName);
     },
   } as unknown as EnumObjectType<N, E>;
   enumObject = Object.freeze(Object.assign(Object.create(null), enumObject));

@@ -1,20 +1,23 @@
 # ts-symbol-enum
-This is a TypeScript library for strictly type-safe enums based on symbols. It is meant to replace Typescript enum, which can't be used with TS `erasableSyntaxOnly` option.
+`ts-symbol-enum` provides enum-like objects whose members are distinct unique symbol types while retaining arbitrary raw values for serialization/parsing. It is designed as a runtime alternative to TypeScript enum that works with `erasableSyntaxOnly` option.
 
 ## Pros
 * Runtime type safety: The library ensures that only valid enum values can be used at runtime, preventing potential bugs and errors.
 * Compile-time type safety: The library provides compile-time type checking, ensuring that only valid enum values can be assigned to variables or passed as function arguments.
 * Works in environments where TypeScript `erasableSyntaxOnly` option is enabled.
-* Can use any underlying type for enum values, including `string`, `number`, and `bigint` (uses [SameValueZero algorithm](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Equality_comparisons_and_sameness#same-value-zero_equality) for comparison).
+* Can use **any** underlying type for enum values, including `string`, `number`, and `bigint` (uses [SameValueZero algorithm](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Equality_comparisons_and_sameness#same-value-zero_equality) for comparison).
 * Can be used as discriminator of discriminated union, just like primitive types.
+* Can have multiple enum values with the same underlying value, parse will return the first one (by declaration order).
 * Generates unique symbols for each enum value, preventing accidental collisions with other enums with same underlying values.
 * Generates arrays of enum values, keys, and entries for easy iteration and manipulation of enum values.
-* Generates helper functions for converting between enum values and their base values
+* Generates helper functions for converting between enum values and their base values.
 * No code generation required, making it easy to use and integrate into existing projects.
+* ESM module compatible
 
 ## Cons
 * More verbose syntax compared to traditional TypeScript enums.
 * No value inlining compared to traditional TypeScript enums.
+* `CommonJS` not supported.
 
 ## Example Usage
 
