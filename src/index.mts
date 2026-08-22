@@ -6,26 +6,26 @@ type Prettify<T> = {
 type ClassType = abstract new () => any;
 type StaticProperties<T extends ClassType> = Exclude<keyof T, 'prototype'>;
 
-type SymbolProperties<T> = {
-  [K in keyof T as T[K] extends symbol ? K : never]: T[K];
-};
-
 type IsUnion<T, U = T> =
   T extends any
     ? [U] extends [T] ? false : true
     : never;
 
-type ExactlyOneStatic<T extends ClassType> = IsUnion<StaticProperties<T>> extends true ? never : T;
-type AllStaticAreSymbols<T extends ClassType> = T[StaticProperties<T>] extends symbol ? T : never;
-type AllStaticAreNonNumeric<T extends ClassType> = StaticProperties<T> extends `${infer N extends number}` ? never : T;
+type ExactlyOneStatic<T extends ClassType> = IsUnion<StaticProperties<T>> extends true ? never : unknown;
+type AllStaticAreSymbols<T extends ClassType> = T[StaticProperties<T>] extends symbol ? unknown : never;
+type AllStaticAreNonNumeric<T extends ClassType> = StaticProperties<T> extends `${number}` ? never : unknown;
 
 type MapIndex<
   T extends readonly (readonly unknown[])[],
   I extends number,
 > = { [K in keyof T]: T[K][I] };
 
-type TupleToObject<T extends readonly unknown[]> = {
+type TupleToArrayLike<T extends readonly unknown[]> = {
   [K in keyof T as K extends `${infer N extends number}` ? N : never]: T[K];
+};
+
+type EntriesTupleToRecord<T extends readonly (readonly [string, unknown])[]> = {
+  readonly [P in T[number] as P[0]]: P[1];
 };
 
 type NonReadonlyTuple<T extends readonly unknown[]> = {
@@ -34,28 +34,29 @@ type NonReadonlyTuple<T extends readonly unknown[]> = {
 
 type ClassAndValuePair = readonly [ClassType, unknown];
 type ClassAndValuePairs = readonly ClassAndValuePair[];
-type ValidateClassAndValuePairs<E extends ClassAndValuePairs> =
+type ValidateClassAndValuePairs<
+  E extends ClassAndValuePairs,
+  Seen extends readonly unknown[] = []
+> =
   E extends readonly [
-    infer Head extends ClassAndValuePair,
+    readonly [infer C extends ClassType, unknown],
     ...infer Rest extends ClassAndValuePairs
   ]
-    ? readonly [
-      readonly [AllStaticAreNonNumeric<AllStaticAreSymbols<ExactlyOneStatic<Head[0]>>>, Head[1]],
-      ...ValidateClassAndValuePairs<Rest>
-    ]
-    : readonly [];
+    ? ExactlyOneStatic<C>
+      & AllStaticAreSymbols<C>
+      & AllStaticAreNonNumeric<C>
+      & (StaticProperties<C> extends Seen[number] ? never : unknown)
+      & ValidateClassAndValuePairs<Rest, [...Seen, StaticProperties<C>]>
+    : unknown;
 
-
-type InfoFromClassAndValuePair<T extends ClassAndValuePair> = T extends readonly [infer C, infer V]
-  ? SymbolProperties<C> extends infer SP
-  ? keyof SP extends infer SPK extends keyof SP
+type InfoFromClassAndValuePair<T extends ClassAndValuePair> = T extends readonly [infer C extends ClassType, infer V]
+  ? StaticProperties<C> extends infer SPK extends keyof C
   ? readonly [
     SPK,
     V,
-    SP[SPK],
-    readonly [SPK, SP[SPK]],
+    C[SPK],
+    readonly [SPK, C[SPK]],
   ]
-  : never
   : never
   : never;
 
@@ -95,9 +96,8 @@ type EnumObjectType<N extends string, E extends ClassAndValuePairs> =
     keys(): MapIterator<KeyTuple[number]>;
     entries(): MapIterator<NonReadonlyTuple<SymbolEntriesTuple[number]>>;
     [Symbol.iterator](): MapIterator<NonReadonlyTuple<SymbolEntriesTuple[number]>>;
-  } & {
-    readonly [P in SymbolEntriesTuple[number] as P[0]]: P[1];
-  } & TupleToObject<SymbolValuesTuple>>
+  } & EntriesTupleToRecord<SymbolEntriesTuple>
+    & TupleToArrayLike<SymbolValuesTuple>>
   : never
   : never
   : never
@@ -133,7 +133,7 @@ export function SymbolEnum<
     if (/^-?\d+$/.test(key)) {
       throw new Error(`${name}: Class at index ${index} has static symbol property with a numeric name!`);
     }
-    if (keySymbolMap.has(key)) { // TODO: enforce at compile time as well
+    if (keySymbolMap.has(key)) {
       throw new Error(`${name}: Duplicate key '${key}' found at index ${index}! Each class must have a unique static symbol property name.`);
     }
     const symbolValue: symbol = Symbol(`${name}.${key}`);
@@ -199,8 +199,8 @@ export function SymbolEnum<
   return Object.freeze(enumObject);
 }
 
-export type SymbolEnum<T extends object, K> = Prettify<
-  SymbolProperties<T> extends infer SP
+export type SymbolEnum<T extends { readonly entriesArray: readonly (readonly [string, symbol])[] }, K> = Prettify<
+  EntriesTupleToRecord<T['entriesArray']> extends infer SP
   ? [K, unknown] extends [unknown, K]
     ? SP[keyof SP]
     : (K extends keyof SP ? SP[K] : never)

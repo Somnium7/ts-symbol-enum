@@ -98,24 +98,6 @@ function testDiscriminatedUnion(value: DiscriminatedUnion) {
 function testInvalidDeclarations() {
   SymbolEnum(
     'InvalidEnum',
-    // @ts-expect-error each enum class must have exactly one static property
-    [class { static readonly A: unique symbol; static readonly B: unique symbol; }, 10],
-  );
-
-  SymbolEnum(
-    'InvalidEnum',
-    // @ts-expect-error each enum class must have exactly one static property
-    [class {}, 20],
-  );
-
-  SymbolEnum(
-    'InvalidEnum',
-    // @ts-expect-error enum keys must not be numeric-like strings
-    [class { static readonly '123': unique symbol; }, 10],
-  );
-
-  SymbolEnum(
-    'InvalidEnum',
     // @ts-expect-error each enum class must have only static symbol properties
     [class { static readonly A: number; }, 10],
   );
@@ -146,10 +128,10 @@ suite('SymbolEnum runtime tests', () => {
     assert.throws(
       () => SymbolEnum(
         'InvalidEnum',
-        [class { static readonly A: unique symbol;}, 10] as any,
-        [class { }, 20] as any,
+        // @ts-expect-error
+        [class { }, 20],
       ),
-      /^Error: InvalidEnum: Class at index 1 does not have a static symbol property! It must have exactly one static symbol property\.$/,
+      /^Error: InvalidEnum: Class at index 0 does not have a static symbol property! It must have exactly one static symbol property\.$/,
     );
   });
 
@@ -157,7 +139,8 @@ suite('SymbolEnum runtime tests', () => {
     assert.throws(
       () => SymbolEnum(
         'InvalidEnum',
-        [class { static readonly A: unique symbol; static readonly B: unique symbol;}, 10] as any,
+        // @ts-expect-error
+        [class { static readonly A: unique symbol; static readonly B: unique symbol;}, 10],
       ),
       /^Error: InvalidEnum: Class at index 0 has multiple static symbol properties! It must have exactly one static symbol property\.$/,
     );
@@ -167,7 +150,8 @@ suite('SymbolEnum runtime tests', () => {
     assert.throws(
       () => SymbolEnum(
         'InvalidEnum',
-        [class { static readonly '123': unique symbol;}, 10] as any,
+        // @ts-expect-error
+        [class { static readonly '123': unique symbol;}, 10],
       ),
       /^Error: InvalidEnum: Class at index 0 has static symbol property with a numeric name!$/,
     );
@@ -177,6 +161,7 @@ suite('SymbolEnum runtime tests', () => {
     assert.throws(
       () => SymbolEnum(
         'InvalidEnum',
+        // @ts-expect-error
         [class { static readonly A: unique symbol;}, 10],
         [class { static readonly A: unique symbol;}, 20],
       ),
