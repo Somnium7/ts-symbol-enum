@@ -28,6 +28,10 @@ type TupleToObject<T extends readonly unknown[]> = {
   [K in keyof T as K extends `${infer N extends number}` ? N : never]: T[K];
 };
 
+type NonReadonlyTuple<T extends readonly unknown[]> = {
+  -readonly [K in keyof T]: T[K];
+};
+
 type ClassAndValuePair = readonly [abstract new () => any, unknown];
 type ClassAndValuePairs = readonly ClassAndValuePair[];
 
@@ -57,7 +61,7 @@ type InfoFromClassAndValuePairs<
 
 type EnumObjectType<N extends string, E extends ClassAndValuePairs> =
   InfoFromClassAndValuePairs<E> extends infer Info extends readonly (readonly unknown[])[]
-  ? MapIndex<Info, 0> extends infer KeyTuple extends readonly unknown[]
+  ? MapIndex<Info, 0> extends infer KeyTuple extends readonly string[]
   ? MapIndex<Info, 1> extends infer ValueTuple extends readonly unknown[]
   ? MapIndex<Info, 2> extends infer SymbolValuesTuple extends readonly unknown[]
   ? MapIndex<Info, 3> extends infer SymbolEntriesTuple extends readonly (readonly [string, symbol])[]
@@ -73,7 +77,10 @@ type EnumObjectType<N extends string, E extends ClassAndValuePairs> =
     isValidValue(value: unknown): value is ValueTuple[number];
     unparse(symbolValue: SymbolValuesTuple[number]): ValueTuple[number];
     keyOf(symbolValue: SymbolValuesTuple[number]): KeyTuple[number];
-    has(keyName: unknown): keyName is KeyTuple[number];
+    has(keyName: string): keyName is KeyTuple[number];
+    get(keyName: string): SymbolValuesTuple[number] | undefined;
+    forEach(callbackfn: (value: SymbolValuesTuple[number], key: KeyTuple[number], map: EnumObjectType<N, E>) => void, thisArg?: unknown): void;
+    [Symbol.iterator](): MapIterator<NonReadonlyTuple<SymbolEntriesTuple[number]>>;
   } & {
     readonly [P in SymbolEntriesTuple[number] as P[0]]: P[1];
   } & TupleToObject<SymbolValuesTuple>>
@@ -127,7 +134,9 @@ export function SymbolEnum<
     record[index++] = symbolValue;
   }
 
-  let enumObject: EnumObjectType<N, E> = {
+  let enumObject: EnumObjectType<N, E> = Object.create(null);
+
+  Object.assign(enumObject, {
     ...record,
     size: length,
     length,
@@ -143,9 +152,7 @@ export function SymbolEnum<
       }
       return symbolValue;
     },
-    isValidValue: (value: unknown): boolean => {
-      return parseMap.has(value);
-    },
+    isValidValue: (value: unknown): boolean => parseMap.has(value),
     unparse: (symbolValue: symbol): unknown => {
       if (!unparseMap.has(symbolValue)) {
         throw new TypeError(`${name}.unparse: Invalid symbol for enum ${name}: ${symbolValue.toString()}!`);
@@ -159,12 +166,16 @@ export function SymbolEnum<
       }
       return key;
     },
-    has: (keyName: string): boolean => {
-      return keySymbolMap.has(keyName);
+    has: (keyName: string): boolean => keySymbolMap.has(keyName),
+    get: (keyName: string): symbol | undefined => keySymbolMap.get(keyName),
+    forEach: (callbackfn: (value: symbol, key: string, map: EnumObjectType<N, E>) => void, thisArg?: unknown): void => {
+      for (const [key, value] of entries) {
+        callbackfn.call(thisArg, value, key, enumObject);
+      }
     },
-  } as unknown as EnumObjectType<N, E>;
-  enumObject = Object.freeze(Object.assign(Object.create(null), enumObject));
-  return enumObject;
+    [Symbol.iterator]: (): MapIterator<readonly [string, symbol]> => keySymbolMap[Symbol.iterator](),
+  });
+  return Object.freeze(enumObject);
 }
 
 export type SymbolEnum<T extends object, K> = Prettify<

@@ -16,6 +16,8 @@ const TestEnum = SymbolEnum(
 );
 type TestEnum<T = unknown> = SymbolEnum<typeof TestEnum, T>;
 
+const testEnumIterator = TestEnum[Symbol.iterator]();
+
 const TestEnum2 = SymbolEnum(
   'TestEnum2',
   [class { static readonly ZED: unique symbol;}, 'Z'],
@@ -48,7 +50,15 @@ type _ = [
   Assert<Equal<typeof TestEnum.unparse, (symbolValue: typeof TestEnum.A | typeof TestEnum.B) => 10 | 20>>,
   Assert<Equal<typeof TestEnum.keyOf, (symbolValue: typeof TestEnum.A | typeof TestEnum.B) => 'A' | 'B'>>,
   Assert<Equal<typeof TestEnum.isValidValue, (value: unknown) => value is 10 | 20>>,
-  Assert<Equal<typeof TestEnum.has, (keyName: unknown) => keyName is 'A' | 'B'>>,
+  Assert<Equal<typeof TestEnum.has, (keyName: string) => keyName is 'A' | 'B'>>,
+  Assert<Equal<typeof TestEnum.get, (keyName: string) => typeof TestEnum.A | typeof TestEnum.B | undefined>>,
+  Assert<Equal<typeof TestEnum.forEach, (callbackfn: (value: typeof TestEnum.A | typeof TestEnum.B, key: 'A' | 'B', map: typeof TestEnum) => void, thisArg?: unknown) => void>>,
+  Assert<Equal<typeof testEnumIterator, MapIterator<['A', typeof TestEnum.A] | ['B', typeof TestEnum.B]>>>,
+
+  Assert<Equal<TestEnum<'A'>, typeof TestEnum.A>>,
+  Assert<Equal<TestEnum<'B'>, typeof TestEnum.B>>,
+  Assert<Equal<TestEnum<'A' | 'B'>, typeof TestEnum.A | typeof TestEnum.B>>,
+  Assert<Equal<TestEnum, typeof TestEnum.A | typeof TestEnum.B>>,
 
   Assert<Assignable<typeof TestEnum, ArrayLike<symbol>>>,
   // Assert<Assignable<typeof TestEnum, ReadonlyMap<string, symbol>>>, // TODO: work towards this
@@ -187,6 +197,38 @@ suite('SymbolEnum runtime tests', () => {
 
     test('TestEnum.has should return false for non-existing keys', () => {
       assert.strictEqual(TestEnum.has('C'), false);
+    });
+  });
+
+  suite('TestEnum.get', () => {
+    test('TestEnum.get should find existing keys correctly', () => {
+      assert.strictEqual(TestEnum.get('A'), TestEnum.A);
+      assert.strictEqual(TestEnum.get('B'), TestEnum.B);
+    });
+
+    test('TestEnum.get should return undefined for non-existing keys', () => {
+      assert.strictEqual(TestEnum.get('C'), undefined);
+    });
+  });
+
+  suite('TestEnum.forEach', () => {
+    test('TestEnum.forEach should iterate over all entries correctly', () => {
+      const entries: [string, symbol][] = [];
+      TestEnum.forEach((value: symbol, key: string, map: unknown) => {
+        entries.push([key, value]);
+        assert.strictEqual(map, TestEnum);
+      });
+      assert.deepStrictEqual(entries, TestEnum.entries);
+    });
+  });
+
+  suite('TestEnum iterator', () => {
+    test('TestEnum iterator should iterate over all entries correctly', () => {
+      const entries: [string, symbol][] = [];
+      for (const [key, value] of TestEnum) {
+        entries.push([key, value]);
+      }
+      assert.deepStrictEqual(entries, TestEnum.entries);
     });
   });
 });
