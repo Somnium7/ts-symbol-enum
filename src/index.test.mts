@@ -29,6 +29,7 @@ const TestEnum2 = SymbolEnum(
   [class { static readonly NAN: unique symbol;}, NaN],
   [class { static readonly ZERO: unique symbol;}, 0],
   [class { static readonly BIG_ZERO: unique symbol;}, 0n],
+  [class { static readonly B: unique symbol;}, 20],
 );
 type TestEnum2<T = unknown> = SymbolEnum<typeof TestEnum2, T>;
 
@@ -47,6 +48,7 @@ type DiscriminatedUnion = DiscriminatedUnionA | DiscriminatedUnionB;
 
 // Compile-time type tests
 type _ = [
+  // Check type of TestEnum object
   Assert<Equal<typeof TestEnum.name, 'TestEnum'>>,
   Assert<Equal<typeof TestEnum.length, 2>>,
   Assert<Equal<typeof TestEnum.size, 2>>,
@@ -71,13 +73,18 @@ type _ = [
   Assert<Equal<typeof TestEnum.entries, () => MapIterator<['A', typeof TestEnum.A] | ['B', typeof TestEnum.B]>>>,
   Assert<Equal<typeof testEnumIterator, MapIterator<['A', typeof TestEnum.A] | ['B', typeof TestEnum.B]>>>,
 
+  // Check TestEnum generic type
   Assert<Equal<TestEnum<'A'>, typeof TestEnum.A>>,
   Assert<Equal<TestEnum<'B'>, typeof TestEnum.B>>,
   Assert<Equal<TestEnum<'A' | 'B'>, typeof TestEnum.A | typeof TestEnum.B>>,
   Assert<Equal<TestEnum, typeof TestEnum.A | typeof TestEnum.B>>,
 
+  // Satisfy array and map interfaces
   Assert<Assignable<typeof TestEnum, ArrayLike<symbol>>>,
   Assert<Assignable<typeof TestEnum, ReadonlyMap<string, symbol>>>,
+
+  // Same name, same raw value, different enum, values still different
+  AssertFalse<Equal<typeof TestEnum.B, typeof TestEnum2.B>>,
 ];
 
 function testDiscriminatedUnion(value: DiscriminatedUnion) {
@@ -137,6 +144,17 @@ suite('SymbolEnum runtime tests', () => {
         [class { static readonly '123': unique symbol;}, 10],
       ),
       /^Error: InvalidEnum: Class at index 0 has static symbol property with a numeric name!$/,
+    );
+  });
+
+  test('SymbolEnum should throw for classes with duplicate properties', () => {
+    assert.throws(
+      () => SymbolEnum(
+        'InvalidEnum',
+        [class { static readonly A: unique symbol;}, 10],
+        [class { static readonly A: unique symbol;}, 20],
+      ),
+      /^Error: InvalidEnum: Duplicate key 'A' found at index 1! Each class must have a unique static symbol property name\.$/,
     );
   });
 

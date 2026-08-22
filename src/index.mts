@@ -1,28 +1,28 @@
 
-type SymbolProperties<T> = {
-  [K in keyof T as T[K] extends symbol ? K : never]: T[K];
-};
-
 type Prettify<T> = {
   [K in keyof T]: T[K];
 } & {};
 
+type ClassType = abstract new () => any;
+type StaticProperties<T extends ClassType> = Exclude<keyof T, 'prototype'>;
 
+type SymbolProperties<T> = {
+  [K in keyof T as T[K] extends symbol ? K : never]: T[K];
+};
+
+type IsUnion<T, U = T> =
+  T extends any
+    ? [U] extends [T] ? false : true
+    : never;
+
+type ExactlyOneStatic<T extends ClassType> = IsUnion<StaticProperties<T>> extends true ? never : T;
+type AllStaticAreSymbols<T extends ClassType> = T[StaticProperties<T>] extends symbol ? T : never;
+type AllStaticAreNonNumeric<T extends ClassType> = StaticProperties<T> extends `${infer N extends number}` ? never : T;
 
 type MapIndex<
   T extends readonly (readonly unknown[])[],
   I extends number,
 > = { [K in keyof T]: T[K][I] };
-
-type IsUnion<T, U = T> =
-    T extends any
-        ? [U] extends [T] ? false : true
-        : never;
-
-type ExactlyOneSymbolStatic<T> =
-  IsUnion<keyof SymbolProperties<T>> extends true
-    ? never
-    : SymbolProperties<T>;
 
 type TupleToObject<T extends readonly unknown[]> = {
   [K in keyof T as K extends `${infer N extends number}` ? N : never]: T[K];
@@ -32,8 +32,19 @@ type NonReadonlyTuple<T extends readonly unknown[]> = {
   -readonly [K in keyof T]: T[K];
 };
 
-type ClassAndValuePair = readonly [abstract new () => any, unknown];
+type ClassAndValuePair = readonly [ClassType, unknown];
 type ClassAndValuePairs = readonly ClassAndValuePair[];
+type ValidateClassAndValuePairs<E extends ClassAndValuePairs> = // TODO: use it
+  E extends readonly [
+    infer Head extends ClassAndValuePair,
+    ...infer Rest extends ClassAndValuePairs
+  ]
+    ? readonly [
+      readonly [AllStaticAreNonNumeric<AllStaticAreSymbols<ExactlyOneStatic<Head[0]>>>, Head[1]],
+      ...ValidateClassAndValuePairs<Rest>
+    ]
+    : readonly [];
+
 
 type InfoFromClassAndValuePair<T extends ClassAndValuePair> = T extends readonly [infer C, infer V]
   ? SymbolProperties<C> extends infer SP
@@ -121,6 +132,9 @@ export function SymbolEnum<
     }
     if (/^-?\d+$/.test(key)) { // TODO: enforce at compile time as well
       throw new Error(`${name}: Class at index ${index} has static symbol property with a numeric name!`);
+    }
+    if (keySymbolMap.has(key)) { // TODO: enforce at compile time as well
+      throw new Error(`${name}: Duplicate key '${key}' found at index ${index}! Each class must have a unique static symbol property name.`);
     }
     const symbolValue: symbol = Symbol(`${name}.${key}`);
     keys.push(key);
