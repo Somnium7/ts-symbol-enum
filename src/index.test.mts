@@ -42,10 +42,10 @@ type _ = [
   AssertFalse<Equal<typeof TestEnum.A, typeof TestEnum.B>>,
   Assert<Equal<typeof TestEnum[0], typeof TestEnum.A>>,
   Assert<Equal<typeof TestEnum[1], typeof TestEnum.B>>,
-  Assert<Equal<typeof TestEnum.keys, readonly ['A', 'B']>>,
-  Assert<Equal<typeof TestEnum.values, readonly [typeof TestEnum.A, typeof TestEnum.B]>>,
-  Assert<Equal<typeof TestEnum.rawValues, readonly [10, 20]>>,
-  Assert<Equal<typeof TestEnum.entries, readonly [readonly ['A', typeof TestEnum.A], readonly ['B', typeof TestEnum.B]]>>,
+  Assert<Equal<typeof TestEnum.keysArray, readonly ['A', 'B']>>,
+  Assert<Equal<typeof TestEnum.valuesArray, readonly [typeof TestEnum.A, typeof TestEnum.B]>>,
+  Assert<Equal<typeof TestEnum.rawValuesArray, readonly [10, 20]>>,
+  Assert<Equal<typeof TestEnum.entriesArray, readonly [readonly ['A', typeof TestEnum.A], readonly ['B', typeof TestEnum.B]]>>,
   Assert<Equal<typeof TestEnum.parse, (value: unknown) => typeof TestEnum.A | typeof TestEnum.B>>,
   Assert<Equal<typeof TestEnum.unparse, (symbolValue: typeof TestEnum.A | typeof TestEnum.B) => 10 | 20>>,
   Assert<Equal<typeof TestEnum.keyOf, (symbolValue: typeof TestEnum.A | typeof TestEnum.B) => 'A' | 'B'>>,
@@ -53,6 +53,9 @@ type _ = [
   Assert<Equal<typeof TestEnum.has, (keyName: string) => keyName is 'A' | 'B'>>,
   Assert<Equal<typeof TestEnum.get, (keyName: string) => typeof TestEnum.A | typeof TestEnum.B | undefined>>,
   Assert<Equal<typeof TestEnum.forEach, (callbackfn: (value: typeof TestEnum.A | typeof TestEnum.B, key: 'A' | 'B', map: typeof TestEnum) => void, thisArg?: unknown) => void>>,
+  Assert<Equal<typeof TestEnum.values, () => MapIterator<typeof TestEnum.A | typeof TestEnum.B>>>,
+  Assert<Equal<typeof TestEnum.keys, () => MapIterator<'A' | 'B'>>>,
+  Assert<Equal<typeof TestEnum.entries, () => MapIterator<['A', typeof TestEnum.A] | ['B', typeof TestEnum.B]>>>,
   Assert<Equal<typeof testEnumIterator, MapIterator<['A', typeof TestEnum.A] | ['B', typeof TestEnum.B]>>>,
 
   Assert<Equal<TestEnum<'A'>, typeof TestEnum.A>>,
@@ -61,7 +64,7 @@ type _ = [
   Assert<Equal<TestEnum, typeof TestEnum.A | typeof TestEnum.B>>,
 
   Assert<Assignable<typeof TestEnum, ArrayLike<symbol>>>,
-  // Assert<Assignable<typeof TestEnum, ReadonlyMap<string, symbol>>>, // TODO: work towards this
+  Assert<Assignable<typeof TestEnum, ReadonlyMap<string, symbol>>>,
 ];
 
 suite('SymbolEnum runtime tests', () => {
@@ -74,10 +77,10 @@ suite('SymbolEnum runtime tests', () => {
     assert.notStrictEqual(TestEnum.A, TestEnum.B);
     assert.strictEqual(TestEnum[0], TestEnum.A);
     assert.strictEqual(TestEnum[1], TestEnum.B);
-    assert.deepStrictEqual(TestEnum.keys, ['A', 'B']);
-    assert.deepStrictEqual(TestEnum.values, [TestEnum.A, TestEnum.B]);
-    assert.deepStrictEqual(TestEnum.rawValues, [10, 20]);
-    assert.deepStrictEqual(TestEnum.entries, [['A', TestEnum.A], ['B', TestEnum.B]]);
+    assert.deepStrictEqual(TestEnum.keysArray, ['A', 'B']);
+    assert.deepStrictEqual(TestEnum.valuesArray, [TestEnum.A, TestEnum.B]);
+    assert.deepStrictEqual(TestEnum.rawValuesArray, [10, 20]);
+    assert.deepStrictEqual(TestEnum.entriesArray, [['A', TestEnum.A], ['B', TestEnum.B]]);
     assert.strictEqual(typeof TestEnum.parse, 'function');
     assert.strictEqual(typeof TestEnum.unparse, 'function');
     assert.strictEqual(typeof TestEnum.keyOf, 'function');
@@ -218,7 +221,37 @@ suite('SymbolEnum runtime tests', () => {
         entries.push([key, value]);
         assert.strictEqual(map, TestEnum);
       });
-      assert.deepStrictEqual(entries, TestEnum.entries);
+      assert.deepStrictEqual(entries, TestEnum.entriesArray);
+    });
+  });
+
+  suite('TestEnum.values', () => {
+    test('TestEnum.values should iterate over all values correctly', () => {
+      const values: symbol[] = [];
+      for (const value of TestEnum.values()) {
+        values.push(value);
+      }
+      assert.deepStrictEqual(values, TestEnum.valuesArray);
+    });
+  });
+
+  suite('TestEnum.keys', () => {
+    test('TestEnum.keys should iterate over all keys correctly', () => {
+      const keys: string[] = [];
+      for (const key of TestEnum.keys()) {
+        keys.push(key);
+      }
+      assert.deepStrictEqual(keys, TestEnum.keysArray);
+    });
+  });
+
+  suite('TestEnum.entries', () => {
+    test('TestEnum.entries should iterate over all entries correctly', () => {
+      const entries: [string, symbol][] = [];
+      for (const entry of TestEnum.entries()) {
+        entries.push(entry);
+      }
+      assert.deepStrictEqual(entries, TestEnum.entriesArray);
     });
   });
 
@@ -228,7 +261,7 @@ suite('SymbolEnum runtime tests', () => {
       for (const [key, value] of TestEnum) {
         entries.push([key, value]);
       }
-      assert.deepStrictEqual(entries, TestEnum.entries);
+      assert.deepStrictEqual(entries, TestEnum.entriesArray);
     });
   });
 });

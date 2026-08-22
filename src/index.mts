@@ -69,10 +69,10 @@ type EnumObjectType<N extends string, E extends ClassAndValuePairs> =
     readonly size: E['length'];
     readonly length: E['length'];
     readonly name: N;
-    readonly keys: KeyTuple;
-    readonly values: SymbolValuesTuple;
-    readonly rawValues: ValueTuple;
-    readonly entries: SymbolEntriesTuple;
+    readonly keysArray: KeyTuple;
+    readonly valuesArray: SymbolValuesTuple;
+    readonly rawValuesArray: ValueTuple;
+    readonly entriesArray: SymbolEntriesTuple;
     parse(value: unknown): SymbolValuesTuple[number];
     isValidValue(value: unknown): value is ValueTuple[number];
     unparse(symbolValue: SymbolValuesTuple[number]): ValueTuple[number];
@@ -80,6 +80,9 @@ type EnumObjectType<N extends string, E extends ClassAndValuePairs> =
     has(keyName: string): keyName is KeyTuple[number];
     get(keyName: string): SymbolValuesTuple[number] | undefined;
     forEach(callbackfn: (value: SymbolValuesTuple[number], key: KeyTuple[number], map: EnumObjectType<N, E>) => void, thisArg?: unknown): void;
+    values(): MapIterator<SymbolValuesTuple[number]>;
+    keys(): MapIterator<KeyTuple[number]>;
+    entries(): MapIterator<NonReadonlyTuple<SymbolEntriesTuple[number]>>;
     [Symbol.iterator](): MapIterator<NonReadonlyTuple<SymbolEntriesTuple[number]>>;
   } & {
     readonly [P in SymbolEntriesTuple[number] as P[0]]: P[1];
@@ -141,10 +144,10 @@ export function SymbolEnum<
     size: length,
     length,
     name,
-    keys: Object.freeze(keys),
-    values: Object.freeze(values),
-    rawValues: Object.freeze(rawValues),
-    entries: Object.freeze(entries),
+    keysArray: Object.freeze(keys),
+    valuesArray: Object.freeze(values),
+    rawValuesArray: Object.freeze(rawValues),
+    entriesArray: Object.freeze(entries),
     parse: (value: unknown): symbol => {
       const symbolValue: symbol | undefined = parseMap.get(value);
       if (symbolValue === undefined) {
@@ -166,6 +169,7 @@ export function SymbolEnum<
       }
       return key;
     },
+    // Map-like methods
     has: (keyName: string): boolean => keySymbolMap.has(keyName),
     get: (keyName: string): symbol | undefined => keySymbolMap.get(keyName),
     forEach: (callbackfn: (value: symbol, key: string, map: EnumObjectType<N, E>) => void, thisArg?: unknown): void => {
@@ -173,7 +177,10 @@ export function SymbolEnum<
         callbackfn.call(thisArg, value, key, enumObject);
       }
     },
-    [Symbol.iterator]: (): MapIterator<readonly [string, symbol]> => keySymbolMap[Symbol.iterator](),
+    values: (): MapIterator<symbol> => keySymbolMap.values(),
+    keys: (): MapIterator<string> => keySymbolMap.keys(),
+    entries: (): MapIterator<[string, symbol]> => keySymbolMap.entries(),
+    [Symbol.iterator]: (): MapIterator<[string, symbol]> => keySymbolMap.entries(),
   });
   return Object.freeze(enumObject);
 }
