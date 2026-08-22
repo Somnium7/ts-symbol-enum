@@ -32,6 +32,19 @@ const TestEnum2 = SymbolEnum(
 );
 type TestEnum2<T = unknown> = SymbolEnum<typeof TestEnum2, T>;
 
+interface DiscriminatedUnionA {
+  type: TestEnum<'A'>;
+  a: string;
+}
+
+interface DiscriminatedUnionB {
+  type: TestEnum<'B'>;
+  b: number;
+}
+
+type DiscriminatedUnion = DiscriminatedUnionA | DiscriminatedUnionB;
+
+
 // Compile-time type tests
 type _ = [
   Assert<Equal<typeof TestEnum.name, 'TestEnum'>>,
@@ -66,6 +79,14 @@ type _ = [
   Assert<Assignable<typeof TestEnum, ArrayLike<symbol>>>,
   Assert<Assignable<typeof TestEnum, ReadonlyMap<string, symbol>>>,
 ];
+
+function testDiscriminatedUnion(value: DiscriminatedUnion) {
+  if (value.type === TestEnum.A) {
+    value satisfies DiscriminatedUnionA;
+  } else {
+    value satisfies DiscriminatedUnionB;
+  }
+}
 
 suite('SymbolEnum runtime tests', () => {
   test('SymbolEnum should fill all necessary properties', () => {

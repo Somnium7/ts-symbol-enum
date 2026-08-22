@@ -40,14 +40,15 @@ type TestEnum = {
   readonly size: 3;
   readonly length: 3;
   readonly name: 'TestEnum';
-  readonly keys: readonly ['A', 'B', 'C'];
-  readonly values: readonly [unique symbol, unique symbol, unique symbol];
-  readonly originalValues: readonly [10, 20, 30];
-  readonly entries: readonly [readonly ['A', unique symbol], readonly ['B', unique symbol], readonly ['C', unique symbol]];
+  readonly keysArray: readonly ['A', 'B', 'C'];
+  readonly valuesArray: readonly [unique symbol, unique symbol, unique symbol];
+  readonly rawValuesArray: readonly [10, 20, 30];
+  readonly entriesArray: readonly [readonly ['A', unique symbol], readonly ['B', unique symbol], readonly ['C', unique symbol]];
   parse: (value: unknown) => unique symbol | unique symbol | unique symbol;
   isValidValue: (value: unknown) => value is 10 | 20 | 30;
   unparse: (symbolValue: unique symbol | unique symbol | unique symbol) => 10 | 20 | 30;
-  getKeyName: (symbolValue: unique symbol | unique symbol | unique symbol) => 'A' | 'B' | 'C';
+  keyOf: (symbolValue: unique symbol | unique symbol | unique symbol) => 'A' | 'B' | 'C';
+  // ...
   readonly 0: unique symbol;
   readonly 1: unique symbol;
   readonly 2: unique symbol;
@@ -87,3 +88,23 @@ Convert value from enum value to base type:
 const a: 10 | 20 | 30 = TestEnum.unparse(TestEnum.A); // 10
 ```
 
+Use in discriminated union:
+```ts
+interface DiscriminatedUnionA {
+  type: TestEnum<'A'>;
+  a: string;
+}
+interface DiscriminatedUnionB {
+  type: TestEnum<'B'>;
+  b: number;
+}
+type DiscriminatedUnion = DiscriminatedUnionA | DiscriminatedUnionB;
+
+function testDiscriminatedUnion(value: DiscriminatedUnion) {
+  if (value.type === TestEnum.A) {
+    value satisfies DiscriminatedUnionA;
+  } else {
+    value satisfies DiscriminatedUnionB;
+  }
+}
+```
