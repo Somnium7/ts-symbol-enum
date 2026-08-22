@@ -34,7 +34,7 @@ type NonReadonlyTuple<T extends readonly unknown[]> = {
 
 type ClassAndValuePair = readonly [ClassType, unknown];
 type ClassAndValuePairs = readonly ClassAndValuePair[];
-type ValidateClassAndValuePairs<E extends ClassAndValuePairs> = // TODO: use it
+type ValidateClassAndValuePairs<E extends ClassAndValuePairs> =
   E extends readonly [
     infer Head extends ClassAndValuePair,
     ...infer Rest extends ClassAndValuePairs
@@ -107,7 +107,7 @@ type EnumObjectType<N extends string, E extends ClassAndValuePairs> =
 export function SymbolEnum<
   const N extends string,
   const E extends ClassAndValuePairs,
->(name: N, ...classAndRawValuePairs: E): EnumObjectType<N, E> {
+>(name: N, ...classAndRawValuePairs: E & ValidateClassAndValuePairs<E>): EnumObjectType<N, E> {
 
   const length: E['length'] = classAndRawValuePairs.length;
 
@@ -123,14 +123,14 @@ export function SymbolEnum<
   let index = 0;
   for (const [classDecl, rawValue] of classAndRawValuePairs) {
     const classDeclKeys: string[] = Object.keys(classDecl);
-    if (classDeclKeys.length > 1) { // TODO: enforce at compile time as well
+    if (classDeclKeys.length > 1) {
       throw new Error(`${name}: Class at index ${index} has multiple static symbol properties! It must have exactly one static symbol property.`);
     }
     const key: string | undefined = classDeclKeys[0];
-    if (!key) { // TODO: enforce at compile time as well
+    if (!key) {
       throw new Error(`${name}: Class at index ${index} does not have a static symbol property! It must have exactly one static symbol property.`);
     }
-    if (/^-?\d+$/.test(key)) { // TODO: enforce at compile time as well
+    if (/^-?\d+$/.test(key)) {
       throw new Error(`${name}: Class at index ${index} has static symbol property with a numeric name!`);
     }
     if (keySymbolMap.has(key)) { // TODO: enforce at compile time as well
