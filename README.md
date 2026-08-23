@@ -31,7 +31,7 @@ conventions are involved.
 npm install ts-symbol-enum
 ```
 
-The package is ESM-only and currently requires Node.js 24 or newer.
+The package is ESM-only and currently requires Node.js 22 or newer and TypeScript 5.9 or newer.
 
 ## Quick start
 
