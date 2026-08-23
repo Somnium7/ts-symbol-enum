@@ -1,5 +1,7 @@
 # ts-symbol-enum
 
+[NPM](https://www.npmjs.com/package/ts-symbol-enum) | [GitHub](https://github.com/Somnium7/ts-symbol-enum) | [MIT License](https://github.com/Somnium7/ts-symbol-enum/blob/main/LICENSE)
+
 `ts-symbol-enum` creates immutable, enum-like objects whose members are distinct
 symbol values and distinct TypeScript types. Each member also has an arbitrary
 raw value for parsing, validation, and serialization.
@@ -12,8 +14,8 @@ conventions are involved.
 
 - **Nominal member identity.** `Status.ACTIVE` and `OtherStatus.ACTIVE` are
   different symbols, even when their names and raw values are the same.
-- **Strong inference.** Keys, members, tuples, array indexes, parser results,
-  and raw values are inferred from the declaration as literals.
+- **Strong declaration inference.** Keys, members, tuples, array indexes, and
+  raw values are inferred from the declaration as literals.
 - **Runtime validation.** `parse`, `unparse`, and `keyOf` reject values that do
   not belong to the enum.
 - **Serialization boundary.** Keep symbols inside the application and convert
@@ -55,10 +57,12 @@ function isFinished(status: Status): boolean {
 }
 
 // Parse data received from an API or a file.
-const status = Status.parse('approved'); // typeof Status.APPROVED
+// The runtime value is checked, but the result is the union of Status members.
+const status: Status = Status.parse('approved');
 
 // Serialize data leaving the program.
-const rawStatus = Status.unparse(status); // 'approved'
+const rawStatus: 'pending' | 'approved' | 'rejected' =
+  Status.unparse(status);
 ```
 
 The declaration also creates numeric properties, so `Status[0]` is
@@ -84,6 +88,68 @@ refers only to the runtime object. Individual member types can always be
 written with `typeof`, for example
 `typeof Status.APPROVED | typeof Status.REJECTED`.
 
+## Generated types and collections
+
+The declaration is preserved in the types of the generated properties. The
+following assignments are checked as exact tuples, not widened arrays:
+
+```ts
+const keys: readonly ['PENDING', 'APPROVED', 'REJECTED'] = Status.keysArray;
+const values: readonly [
+  typeof Status.PENDING,
+  typeof Status.APPROVED,
+  typeof Status.REJECTED,
+] = Status.valuesArray;
+const rawValues: readonly ['pending', 'approved', 'rejected'] =
+  Status.rawValuesArray;
+const entries: readonly [
+  readonly ['PENDING', typeof Status.PENDING],
+  readonly ['APPROVED', typeof Status.APPROVED],
+  readonly ['REJECTED', typeof Status.REJECTED],
+] = Status.entriesArray;
+
+const first: typeof Status.PENDING = Status[0];
+```
+
+The same precise unions are available when iterating. Keys and symbols are
+visited in declaration order, and the object can be used directly in a
+`for...of` loop:
+
+```ts
+for (const key of Status.keys()) {
+  // key: 'PENDING' | 'APPROVED' | 'REJECTED'
+  console.log(key);
+}
+
+for (const value of Status.values()) {
+  // value: typeof Status.PENDING | typeof Status.APPROVED | typeof Status.REJECTED
+  console.log(Status.keyOf(value));
+}
+
+for (const [key, value] of Status) {
+  // key: 'PENDING' | 'APPROVED' | 'REJECTED'
+  // value: typeof Status.PENDING | typeof Status.APPROVED | typeof Status.REJECTED
+  console.log(key, value);
+}
+```
+
+The raw-value type guard and map-like methods are useful when working with
+unknown input or dynamic keys:
+
+```ts
+const rawValue: unknown = 'approved';
+if (Status.isValidValue(rawValue)) {
+  // rawValue: 'pending' | 'approved' | 'rejected'
+  const status: Status = Status.parse(rawValue);
+}
+
+const key: string = 'APPROVED';
+if (Status.has(key)) {
+  // key: 'PENDING' | 'APPROVED' | 'REJECTED'
+  const status = Status.get(key);
+}
+```
+
 ### Discriminated unions
 
 ```ts
@@ -107,12 +173,22 @@ function describe(request: Request): string {
 }
 ```
 
-## Raw values
+## Raw values of any kind
 
-Raw values can be strings, numbers, bigints, `undefined`, `null`, `NaN`, or
-other values accepted by JavaScript `Map`. Matching uses `Map`'s
+Every JavaScript value can be used as a raw value. Strings, numbers, bigints,
+booleans, `undefined`, `null`, `NaN`, objects, arrays, functions, and symbols
+are only examples. This makes the library useful both for simple wire-format
+values and for enums backed by richer application objects.
+
+Raw-value matching uses JavaScript `Map`'s
 [SameValueZero comparison](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Equality_comparisons_and_sameness#same-value-zero_equality),
-so `NaN` matches `NaN`, while `0` and `0n` remain different values.
+so `NaN` matches `NaN`, while `0` and `0n` remain different values. Objects,
+arrays, and functions match by reference, just as they do when used as `Map`
+keys; `0` and `-0` are treated as the same value.
+
+The raw values do not have to all share one type. TypeScript preserves the
+literal or specific type of each value in `rawValuesArray`, `parse`,
+`tryParse`, `isValidValue`, and `unparse`.
 
 Several members may have the same raw value. `parse` and `tryParse` return the
 first matching member in declaration order; `unparse` still returns the raw
@@ -128,6 +204,53 @@ const Kind = SymbolEnum(
 Kind.parse('same') === Kind.FIRST; // true
 Kind.unparse(Kind.SECOND); // 'same'
 ```
+
+For example, an enum can also use object values when identity is meaningful:
+
+```ts
+const Permissions = {
+  read: { name: 'read' },
+  write: { name: 'write' },
+} as const;
+
+const Permission = SymbolEnum(
+  'Permission',
+  [class { static readonly READ: unique symbol; }, Permissions.read],
+  [class { static readonly WRITE: unique symbol; }, Permissions.write],
+);
+
+Permission.parse(Permissions.read) === Permission.READ; // true
+Permission.parse({ name: 'read' }); // throws: different object reference
+```
+
+### Representing absence with `undefined`
+
+An enum can include a `NONE` member whose raw value is `undefined`, alongside
+members backed by completely different raw-value types. This is useful when
+the absence of a value is itself a meaningful state that should remain
+distinct from an invalid or unrecognized value:
+
+```ts
+const Selection = SymbolEnum(
+  'Selection',
+  [class { static readonly NONE: unique symbol; }, undefined],
+  [class { static readonly TEXT: unique symbol; }, 'text'],
+  [class { static readonly INDEX: unique symbol; }, 0],
+);
+type Selection<K = unknown> = SymbolEnum<typeof Selection, K>;
+
+const input: unknown = undefined;
+const selection = Selection.tryParse(input) ?? Selection.NONE;
+const rawSelection = Selection.unparse(selection);
+// rawSelection: undefined | 'text' | 0
+
+Selection.parse(undefined) === Selection.NONE; // true
+```
+
+`undefined` is stored and looked up like any other raw value. In particular,
+`tryParse(undefined)` returns the `NONE` symbol; an unsuccessful parse also
+returns `undefined`, so use `parse` when those two outcomes must be kept
+strictly separate.
 
 ## API
 
@@ -155,7 +278,8 @@ For an enum declared as `Status`, the object contains:
 | `values()` | Iterate over symbols. |
 | `entries()` / `[Symbol.iterator]()` | Iterate over `[key, symbol]` pairs. |
 
-The enum object and its exposed arrays and entries are frozen. Map-like
+The enum object, exposed arrays, and entry tuples are shallowly frozen. Raw
+objects and other reference values are not cloned or deep-frozen. Map-like
 iteration follows declaration order.
 
 ## Declaration constraints
