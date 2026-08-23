@@ -34,6 +34,7 @@
     "/build",
     "!**/*.test.*"
   ],
+  "sideEffects": false,
   "engines": {
     "node": ">=22"
   },
