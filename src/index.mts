@@ -13,7 +13,7 @@ type IsUnion<T, U = T> =
 
 type ExactlyOneStatic<T extends ClassType> = IsUnion<StaticProperties<T>> extends true ? never : unknown;
 type AllStaticAreSymbols<T extends ClassType> = T[StaticProperties<T>] extends symbol ? unknown : never;
-type AllStaticAreNonNumeric<T extends ClassType> = StaticProperties<T> extends `${number}` ? never : unknown;
+type AllStaticAreNonNumeric<T extends ClassType> = StaticProperties<T> extends `${bigint}` ? never : unknown;
 
 type MapIndex<
   T extends readonly (readonly unknown[])[],
