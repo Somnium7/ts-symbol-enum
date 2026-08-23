@@ -118,10 +118,17 @@ suite('SymbolEnum runtime tests', () => {
     assert.deepStrictEqual(TestEnum.rawValuesArray, [10, 20]);
     assert.deepStrictEqual(TestEnum.entriesArray, [['A', TestEnum.A], ['B', TestEnum.B]]);
     assert.strictEqual(typeof TestEnum.parse, 'function');
+    assert.strictEqual(typeof TestEnum.tryParse, 'function');
     assert.strictEqual(typeof TestEnum.unparse, 'function');
     assert.strictEqual(typeof TestEnum.keyOf, 'function');
     assert.strictEqual(typeof TestEnum.isValidValue, 'function');
     assert.strictEqual(typeof TestEnum.has, 'function');
+    assert.strictEqual(typeof TestEnum.get, 'function');
+    assert.strictEqual(typeof TestEnum.forEach, 'function');
+    assert.strictEqual(typeof TestEnum.values, 'function');
+    assert.strictEqual(typeof TestEnum.keys, 'function');
+    assert.strictEqual(typeof TestEnum.entries, 'function');
+    assert.strictEqual(typeof TestEnum[Symbol.iterator], 'function');
   });
 
   test('SymbolEnum should throw for classes without static symbol property', () => {
@@ -192,6 +199,17 @@ suite('SymbolEnum runtime tests', () => {
         () => TestEnum.parse(30),
         /^TypeError: TestEnum.parse: Invalid value for enum TestEnum: 30! Valid values are: 10, 20\.$/,
       );
+    });
+  });
+
+  suite('TestEnum.tryParse', () => {
+    test('TestEnum.tryParse should find existing values correctly', () => {
+      assert.strictEqual(TestEnum.tryParse(10), TestEnum.A);
+      assert.strictEqual(TestEnum.tryParse(20), TestEnum.B);
+    });
+
+    test('TestEnum.tryParse should return undefined for non-existing values', () => {
+      assert.strictEqual(TestEnum.tryParse(30), undefined);
     });
   });
 

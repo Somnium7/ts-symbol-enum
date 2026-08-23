@@ -15,7 +15,7 @@
 * ESM module compatible
 
 ## Cons
-* More verbose syntax compared to traditional TypeScript enums.
+* More verbose declaration syntax compared to traditional TypeScript enums.
 * No value inlining compared to traditional TypeScript enums.
 * `CommonJS` not supported.
 
@@ -44,8 +44,8 @@ type TestEnum = {
   readonly valuesArray: readonly [unique symbol, unique symbol, unique symbol];
   readonly rawValuesArray: readonly [10, 20, 30];
   readonly entriesArray: readonly [readonly ['A', unique symbol], readonly ['B', unique symbol], readonly ['C', unique symbol]];
-  parse: (value: unknown) => unique symbol | unique symbol | unique symbol;
-  isValidValue: (value: unknown) => value is 10 | 20 | 30;
+  parse: (rawValue: unknown) => unique symbol | unique symbol | unique symbol;
+  tryParse: (rawValue: unknown) => unique symbol | unique symbol | unique symbol | undefined;
   unparse: (symbolValue: unique symbol | unique symbol | unique symbol) => 10 | 20 | 30;
   keyOf: (symbolValue: unique symbol | unique symbol | unique symbol) => 'A' | 'B' | 'C';
   // ...
@@ -81,6 +81,7 @@ Convert value from base type to enum value:
 ```ts
 const a: TestEnum = TestEnum.parse(10); // ok
 const b: TestEnum = TestEnum.parse(99); // throws error
+const c: TestEnum = TestEnum.tryParse(99) ?? TestEnum.A; // use fallback value if parsing fails
 ```
 
 Convert value from enum value to base type:

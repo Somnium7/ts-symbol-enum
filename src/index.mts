@@ -85,8 +85,9 @@ type EnumObjectType<N extends string, E extends ClassAndValuePairs> =
     readonly valuesArray: SymbolValuesTuple;
     readonly rawValuesArray: ValueTuple;
     readonly entriesArray: SymbolEntriesTuple;
-    parse(value: unknown): SymbolValuesTuple[number];
-    isValidValue(value: unknown): value is ValueTuple[number];
+    parse(rawValue: unknown): SymbolValuesTuple[number];
+    tryParse(rawValue: unknown): SymbolValuesTuple[number] | undefined;
+    isValidValue(rawValue: unknown): rawValue is ValueTuple[number];
     unparse(symbolValue: SymbolValuesTuple[number]): ValueTuple[number];
     keyOf(symbolValue: SymbolValuesTuple[number]): KeyTuple[number];
     has(keyName: string): keyName is KeyTuple[number];
@@ -169,7 +170,8 @@ export function SymbolEnum<
       }
       return symbolValue;
     },
-    isValidValue: (value: unknown): boolean => parseMap.has(value),
+    tryParse: (rawValue: unknown): symbol | undefined => parseMap.get(rawValue),
+    isValidValue: (rawValue: unknown): boolean => parseMap.has(rawValue),
     unparse: (symbolValue: symbol): unknown => {
       if (!unparseMap.has(symbolValue)) {
         throw new TypeError(`${name}.unparse: Invalid symbol for enum ${name}: ${symbolValue.toString()}!`);
